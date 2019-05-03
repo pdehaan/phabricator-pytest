@@ -3,7 +3,7 @@ https://wiki.mozilla.org/Phabricator/TestPlan
 """
 
 import os
-import subprocess
+# import subprocess
 
 import dotenv
 # import requests
@@ -13,17 +13,17 @@ CONF = dotenv.find_dotenv()
 if CONF:
     dotenv.load_dotenv(CONF)
 
-API_DETAILS = {
-    'bugzilla_host': os.getenv("BUGZILLA_HOST"),
-    'bugzilla_api_key': os.getenv("BUGZILLA_API_KEY_1")
-}
-
-REST_CLIENT = BugzillaRESTClient(API_DETAILS)
+BUGZILLA_CLIENT = BugzillaRESTClient({
+    'bugzilla_host': os.getenv('BUGZILLA_HOST'),
+    'bugzilla_api_key': os.getenv('BUGZILLA_API_KEY_1')
+})
 
 
 def run_cmd(cmd_arr):
     """ Run a command using subprocess. """
-    return subprocess.run(cmd_arr, capture_output=True, text=True, check=True)
+    output = ' '.join(cmd_arr)
+    return dict(stdout=output)
+    # return subprocess.run(cmd_arr, capture_output=True, text=True, check=True)
 
 
 class TestPlan():
@@ -59,13 +59,14 @@ class TestPlan():
         """
         # T2 - Creating a revision is successful
 
+        NOTE: Make sure you have `moz-phab` properly setup on your machine and have run `arc install-certificate` using the Phabricator user you wish to test with as documented above.
+
         ## Test Plan
-        1. Make sure you have `moz-phab` properly setup on your machine and have run `arc install-certificate` using the Phabricator user you wish to test with as documented above.
-        2. Go to BMO and create a new bug as the Bugzilla user that the Phabricator account is connected to. (Or use an existing public bug).
+        1. Go to BMO and create a new bug as the Bugzilla user that the Phabricator account is connected to. (Or use an existing public bug).
             - To create bugs directly and bypass triaging, go to https://bugzilla.allizom.org/enter_bug.cgi?product=Firefox&format=__default__ (staging) or https://bugzilla-dev.allizom.org/enter_bug.cgi?product=Firefox&format=__default__ (dev)
-        3. Using the repo listed in the "Getting Started" section above that matches the environment you are testing, make some change to a file.
-        4. Run `hg commit -A -m 'Bug <bugid>: New changes'`
-        5. Run `moz-phab`
+        2. Using the repo listed in the "Getting Started" section above that matches the environment you are testing, make some change to a file.
+        3. Run `hg commit -A -m 'Bug <bug_id>: New changes'`
+        4. Run `moz-phab`
 
         ## Results
         1. `moz-phab` only submitted the 1 newly created commit.
@@ -79,14 +80,25 @@ class TestPlan():
         6. Author received an email from mozphab-dev@mozilla.com. It has a title formatted as "[Differential] [Changed Policy] D{revision number}: {first line}." and a body with a text "phab-bot changed the visibility from "Administrators" to "Public (No Login Required)"."
         """
 
-        """ Step 4. """
-        bug_id = 9999
-        # hg_output = run_cmd(["hg", "commit", "-A", "-m", f"Bug {bug_id}: New changes"])
-        # print(hg_output.stdout)
+        """ Step 1. """
+        bug_data = {
+            'product': 'Firefox',
+            'component': 'Developer Tools',
+            'summary': 'Test Bug',
+            'version': 'unspecified'
+        }
+        bug_id = BUGZILLA_CLIENT.bug_create(bug_data)
 
-        """ Step 5. """
-        # mozphab_output = run_cmd(["moz-phab"])
-        # print(mozphab_output.stdout)
+        """ Step 3. """
+        hg_output = run_cmd(
+            ["hg", "commit", "-A", "-m",
+             f"'Bug {bug_id}: New changes'"]
+        )
+        print(hg_output)
+
+        """ Step 4. """
+        mozphab_output = run_cmd(["moz-phab"])
+        print(mozphab_output)
 
         return
 
@@ -108,16 +120,16 @@ class TestPlan():
         """
 
         """ Step 1. """
-        # hg_output = run_cmd(["hg", "update"])
-        # print(hg_output.stdout)
+        hg_output = run_cmd(["hg", "update"])
+        print(hg_output)
 
         """ Step 2. """
-        # hg_output2 = run_cmd(["hg", "commit", "--amend"])
-        # print(hg_output2.stdout)
+        hg_output2 = run_cmd(["hg", "commit", "--amend"])
+        print(hg_output2)
 
         """ Step 3. """
-        # mozphab_output = run_cmd(["moz-phab"])
-        # print(mozphab_output.stdout)
+        mozphab_output = run_cmd(["moz-phab"])
+        print(mozphab_output)
 
         return
 
@@ -130,7 +142,7 @@ class TestPlan():
         ## Test Plan
         1. Go to bugzilla and create a security bug:
         2. Click "Edit Bug", open the "Security" panel, and check one of the security-sensitive boxes, e.g. "Security-Sensitive Core Bug".
-        3. Run `hg commit -A -m 'Bug <bugid>: Private changes'`
+        3. Run `hg commit -A -m 'Bug <bug_id>: Private changes'`
         4. Run `moz-phab`.
 
         ## Results
@@ -148,15 +160,26 @@ class TestPlan():
         12. The revision is NOT visible to logged in members without the correct permission.
         """
 
-        """ Step 3. """
-        bug_id = 9999
+        """ Step 1. """
+        bug_data = {
+            'product': 'Firefox',
+            'component': 'Developer Tools',
+            'summary': 'Test Secure Bug',
+            'version': 'unspecified',
+            'groups': ['firefox-core-security']
+        }
+        bug_id = BUGZILLA_CLIENT.bug_create(bug_data)
 
-        # hg_output = run_cmd(["hg", "commit", "-A", "-m", f"Bug {bug_id}: Private changes"])
-        # print(hg_output.stdout)
+        """ Step 3. """
+        hg_output = run_cmd(
+            ["hg", "commit", "-A", "-m",
+             f"'Bug {bug_id}: Private changes'"]
+        )
+        print(hg_output)
 
         """ Step 4. """
-        # mozphab_output = run_cmd(["moz-phab"])
-        # print(mozphab_output.stdout)
+        mozphab_output = run_cmd(["moz-phab"])
+        print(mozphab_output)
 
         return
 
@@ -168,7 +191,7 @@ class TestPlan():
 
         ## Test Plan
         1. Go to bugzilla and create a public bug:
-        2. Run `hg commit -A -m 'Bug <bugid>: Public changes'`
+        2. Run `hg commit -A -m 'Bug <bug_id>: Public changes'`
         3. Run `moz-phab`.
         4. Check if revision is available for public.
         5. Go to bugzilla and create a security bug:
@@ -191,15 +214,25 @@ class TestPlan():
         12. The reviewer received an email from the author with a text "The content for this message can only be transmitted over a secure channel." and a link to Phabricator.
         """
 
-        """ Step 2. """
-        bug_id = 9999
+        """ Step 1. """
+        bug_data = {
+            'product': 'Firefox',
+            'component': 'Developer Tools',
+            'summary': 'Test Public Bug',
+            'version': 'unspecified'
+        }
+        bug_id = BUGZILLA_CLIENT.bug_create(bug_data)
 
-        # hg_output = run_cmd(["hg", "commit", "-A", "-m", f"Bug {bug_id}: Public changes"])
-        # print(hg_output.stdout)
+        """ Step 2. """
+        hg_output = run_cmd(
+            ["hg", "commit", "-A", "-m",
+             f"'Bug {bug_id}: Public changes'"]
+        )
+        print(hg_output)
 
         """ Step 3. """
-        # mozphab_output = run_cmd(["moz-phab"])
-        # print(mozphab_output.stdout)
+        mozphab_output = run_cmd(["moz-phab"])
+        print(mozphab_output)
 
         return
 
@@ -209,7 +242,7 @@ class TestPlan():
 
         ## Test Plan
         1. Entering an invalid bug id, e.g "abcd efg" or "$1000", fails.
-        2. Run `hg commit -A -m 'Bug <bugid>: Public changes'`
+        2. Run `hg commit -A -m 'Bug <bug_id>: Public changes'`
         3. Run `moz-phab`.
 
         ## Results
@@ -217,12 +250,16 @@ class TestPlan():
         """
 
         """ Step 2. """
-        # hg_output = run_cmd(["hg", "commit", "-A", "-m", "Bug abcd efg: Public changes"])
-        # print(hg_output.stdout)
+        invalid_bug_id = "abcd efg"
+        hg_output = run_cmd(
+            ["hg", "commit", "-A", "-m",
+             f"'Bug {invalid_bug_id}: Public changes'"]
+        )
+        print(hg_output)
 
         """ Step 3. """
-        # mozphab_output = run_cmd(["moz-phab"])
-        # print(mozphab_output.stdout)
+        mozphab_output = run_cmd(["moz-phab"])
+        print(mozphab_output)
 
         return
 
@@ -232,7 +269,7 @@ class TestPlan():
 
         ## Test Plan
         1. Entering the id of a bug that does not exist fails.
-        2. Run `hg commit -A -m 'Bug <bugid>: Public changes'`
+        2. Run `hg commit -A -m 'Bug <bug_id>: Public changes'`
         3. Run `moz-phab`.
 
         ## Results
@@ -241,19 +278,21 @@ class TestPlan():
 
         """ Step 2. """
         try:
-            bug_id = 0
+            bug_id = 9999
             hg_output = run_cmd(
-                ["hg", "commit", "-A", "-m", f"Bug {bug_id}: Public changes"])
-        except:
+                ["hg", "commit", "-A", "-m",
+                 f"'Bug {bug_id}: Public changes'"]
+            )
+        except AssertionError as err:
             pass
             # print(hg_output.stderr)
         else:
             print("Unexpected passing test")
-            print(hg_output.stdout)
+            print(hg_output)
 
         """ Step 3. """
-        # mozphab_output = run_cmd(["moz-phab"])
-        # print(mozphab_output.stdout)
+        mozphab_output = run_cmd(["moz-phab"])
+        print(mozphab_output)
 
         return
 
@@ -263,7 +302,7 @@ class TestPlan():
 
         ## Test Plan
         1. Entering the id of a bug of a secure revision that the user does not have access to fails.
-        2. Run `hg commit -A -m 'Bug <bugid>: Public changes'`
+        2. Run `hg commit -A -m 'Bug <bug_id>: Public changes'`
         3. Run `moz-phab`.
 
         ## Results
@@ -271,14 +310,17 @@ class TestPlan():
         """
 
         """ Step 2. """
-        bug_id = 9999
+        secure_bug_id = 1395350
 
-        # hg_output = run_cmd(["hg", "commit", "-A", "-m", f"Bug {bug id}: Public changes"])
-        # print(hg_output.stdout)
+        hg_output = run_cmd(
+            ["hg", "commit", "-A", "-m",
+             f"'Bug {secure_bug_id}: Public changes'"]
+        )
+        print(hg_output)
 
         """ Step 3. """
-        # mozphab_output = run_cmd(["moz-phab"])
-        # print(mozphab_output.stdout)
+        mozphab_output = run_cmd(["moz-phab"])
+        print(mozphab_output)
 
         return
 
@@ -288,7 +330,7 @@ class TestPlan():
 
         ## Test Plan
         1. Entering a valid bug id is successful.
-        2. Run `hg commit -A -m 'Bug <bugid>: Public changes'`
+        2. Run `hg commit -A -m 'Bug <bug_id>: Public changes'`
         3. Run `moz-phab`.
 
         ## Results
@@ -296,12 +338,16 @@ class TestPlan():
         """
 
         """ Step 2. """
-        # hg_output = run_cmd(["hg", "commit", "-A", "-m", f"Bug {bug_id}: Public changes"])
-        # print(hg_output.stdout)
+        bug_id = 9999
+        hg_output = run_cmd(
+            ["hg", "commit", "-A", "-m",
+             f"Bug {bug_id}: Public changes"]
+        )
+        print(hg_output)
 
         """ Step 3. """
-        # mozphab_output = run_cmd(["moz-phab"])
-        # print(mozphab_output.stdout)
+        mozphab_output = run_cmd(["moz-phab"])
+        print(mozphab_output)
 
         return
 
@@ -310,7 +356,7 @@ class TestPlan():
         # T7 - Creating multiple revisions with the same bug id is successful
 
         ## Test Plan
-        1. Run `hg commit -A -m 'Bug <bugid>: Public changes'`
+        1. Run `hg commit -A -m 'Bug <bug_id>: Public changes'`
         2. Run `moz-phab`.
         3. Create a different comment using same bug id but different title.
 
@@ -319,22 +365,27 @@ class TestPlan():
         2. Visiting the bug on Bugzilla shows 2 corresponding entries for the revisions in the Phabricator Revisions section.
         """
 
-        """ Step 1. """
         bug_id = 9999
 
-        # hg_output = run_cmd(["hg", "commit", "-A", "-m", f"Bug {bug_id}: Public changes"])
-        # print(hg_output.stdout)
+        """ Step 1. """
+        hg_output = run_cmd(
+            ["hg", "commit", "-A", "-m",
+             f"'Bug {bug_id}: Public changes'"]
+        )
+        print(hg_output)
 
         """ Step 2. """
-        # mozphab_output = run_cmd(["moz-phab"])
-        # print(mozphab_output.stdout)
+        mozphab_output = run_cmd(["moz-phab"])
+        print(mozphab_output)
 
         """ Step 3. """
-        # hg_output2 = run_cmd(["hg", "commit", "-A", "-m", f"Bug {bug_id}: More public changes"])
-        # print(hg_output2.stdout)
+        hg_output2 = run_cmd(
+            ["hg", "commit", "-A", "-m",
+             f"'Bug {bug_id}: More public changes'"])
+        print(hg_output2)
 
-        # mozphab_output2 = run_cmd(["moz-phab"])
-        # print(mozphab_output2.stdout)
+        mozphab_output2 = run_cmd(["moz-phab"])
+        print(mozphab_output2)
 
         return
 
@@ -345,7 +396,7 @@ class TestPlan():
         NOTE: Ensure that you have 2 Phabricator accounts that log in via Bugzilla ready to go.
 
         ## Test Plan
-        1. Create a commit with other account as reviewer using `hg commit -m 'Bug <bugid>: New changes r?<reviewer>'`.
+        1. Create a commit with other account as reviewer using `hg commit -m 'Bug <bug_id>: New changes r?<reviewer>'`.
         2. Run `moz-phab`.
         3. Log into Phabricator as the reviewer account.
         4. Add the "Accept Revision" action at the bottom. Submit.
@@ -361,12 +412,15 @@ class TestPlan():
         """ Step 1. """
         bug_id = 0000
         reviewer = "johndoe"
-        # hg_output = run_cmd(["hg", "commit", "-A", "-m", f"Bug {bug_id}: New changes r?{reviewer}"])
-        # print(hg_output.stdout)
+        hg_output = run_cmd(
+            ["hg", "commit", "-A", "-m",
+             f"'Bug {bug_id}: New changes r?{reviewer}'"]
+        )
+        print(hg_output)
 
         """ Step 2. """
-        # mozphab_output = run_cmd(["moz-phab"])
-        # print(mozphab_output.stdout)
+        mozphab_output = run_cmd(["moz-phab"])
+        print(mozphab_output)
 
         return
 
@@ -411,9 +465,11 @@ class TestPlan():
             > ERR-CONDUIT-CORE: Local VCS (git) is different from the remote repository VCS (hg).
         """
 
+        # Not sure how we can change the directory into new repo, or if this is some other test dir structure.
+
         """ Step 2. """
-        # hg_output = run_cmd(["arc", "diff"])
-        # print(hg_output.stdout)
+        hg_output = run_cmd(["arc", "diff"])
+        print(hg_output)
 
         return
 
@@ -431,14 +487,16 @@ class TestPlan():
         1. Code is sucessfully patched using the Diff.
         """
 
+        # Depends on previous test, "T11".
+
         """ Step 1. """
-        # hg_output = run_cmd(["cinnabarrc", "diff", "HEAD~"])
-        # print(hg_output.stdout)
+        hg_output = run_cmd(["cinnabarrc", "diff", "HEAD~"])
+        print(hg_output)
 
         """ Step 4. """
         revision_id = "number of the revision created above"
-        # mozphab_output = run_cmd(["moz-phab", "patch", f"D{revision_id}"])
-        # print(mozphab_output.stdout)
+        mozphab_output = run_cmd(["moz-phab", "patch", f"D{revision_id}"])
+        print(mozphab_output)
 
         return
 
@@ -471,14 +529,24 @@ class TestPlan():
         9. Submitting a public revision should instead show the full contents in the email similar to what was displayed on the Phabricator mail page.
         """
 
+        ## NOT SURE HOW TO DO THE INITIAL STEPS. THIS ALMOST SEEMS BETTER AS A E2E test using Puppeteer or Selenium
+        ## IF WE MEED TO DO A LOT OF UI INTERACTIONS (UNLESS THERE ARE "Self Action > Enable Self Action Mail" CONFIGS
+        ## VIA THE API.
+        ## The other consideration will be verifying the received email, which may require some special @restmail.net
+        ## account which will let us query the inbox and validate the title/summary/text/etc. But not sure if that will
+        ## be a security concern since there is no access control around who can access @restmail.net emails (which could
+        ## mean that people could change the passwords and log in as our test user).
+
         """ Step 7. """
         bug_id = 9999
-
-        # hg_output = run_cmd(["hg", "commit", "-A", "-m", f"Bug {bug_id}: New changes"])
-        # print(hg_output.stdout)
+        hg_output = run_cmd(
+            ["hg", "commit", "-A", "-m",
+             f"'Bug {bug_id}: New changes'"]
+        )
+        print(hg_output)
 
         """ Step 8. """
-        # mozphab_output = run_cmd(["moz-phab"])
-        # print(mozphab_output.stdout)
+        mozphab_output = run_cmd(["moz-phab"])
+        print(mozphab_output)
 
         return
