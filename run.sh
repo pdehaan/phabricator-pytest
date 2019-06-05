@@ -2,4 +2,4 @@
 
 FILE=${1:-test_plan.py}
 
-pytest $FILE -s --verbose
+pytest $FILE -sv

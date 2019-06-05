@@ -12,6 +12,7 @@ requests = "*"
 pytest = "*"
 pytest-bugzilla-notifier = "*"
 python-dotenv = "*"
+hgapi = "*"
 
 [requires]
 python_version = "3.7"

@@ -7,6 +7,8 @@ import os
 
 import dotenv
 # import requests
+import hgapi
+import pytest
 from pytest_bugzilla_notifier.bugzilla_rest_client import BugzillaRESTClient
 
 CONF = dotenv.find_dotenv()
@@ -18,6 +20,7 @@ BUGZILLA_CLIENT = BugzillaRESTClient({
     'bugzilla_api_key': os.getenv('BUGZILLA_API_KEY_1')
 })
 
+repo = hgapi.Repo("peter")
 
 def run_cmd(cmd_arr):
     """ Run a command using subprocess. """
@@ -29,7 +32,17 @@ def run_cmd(cmd_arr):
 class TestPlan():
     """ Run all the tests! """
 
+    @pytest.mark.skip(reason="Potential Selenium test")
     def test_t1_signing_up_is_successful(self):
+        """
+        NOTES: dkl and I flagged this as a potential Selenium test.
+
+        # I'm not sure this is possible. I tried on dev and don't get confirmation emails when
+        # creating a new account. I tried using Puppeteer and verifying via the UI in Chromium,
+        # but when I try and log into Phabricator with my new, verified Bugzilla account, it tells
+        # me I need 2FA, which breaks my automation plan.
+        """
+
         """
         # T1 - Signing up is successful
 
@@ -47,15 +60,19 @@ class TestPlan():
         2. Clicking register approval completes account creation without error.
         3. The account works as expected.
         """
-
-        # I'm not sure this is possible. I tried on dev and don't get confirmation emails when
-        # creating a new account. I tried using Puppeteer and verifying via the UI in Chromium,
-        # but when I try and log into Phabricator with my new, verified Bugzilla account, it tells
-        # me I need 2FA, which breaks my automation plan.
-
+        
         return
 
+
     def test_t2_creating_a_revision_is_successful(self):
+        """
+        NOTES:
+        - not sure how to automate a test which would bypass triaging (per step 1)
+        - this requires the test to be run in a specific directory with existing repo files (step 2)
+        - need to verify if the bugzilla Python script returns the phabricator revision information in the JSON response.
+        - need to figure out how to verify the author received an email (which is possible via restmail, but requires explicitly creating a restmail account which could be tricky since anybody can access the inbox and do password change, etc.)
+        """
+
         """
         # T2 - Creating a revision is successful
 
@@ -90,11 +107,11 @@ class TestPlan():
         bug_id = BUGZILLA_CLIENT.bug_create(bug_data)
 
         """ Step 3. """
-        hg_output = run_cmd(
-            ["hg", "commit", "-A", "-m",
-             f"'Bug {bug_id}: New changes'"]
-        )
-        print(hg_output)
+        try:
+            repo.hg_commit(f"'Bug {bug_id}: New changes'", amend=True)
+        except hgapi.HgException as err:
+            print(err)
+            pass
 
         """ Step 4. """
         mozphab_output = run_cmd(["moz-phab"])
@@ -102,6 +119,7 @@ class TestPlan():
 
         return
 
+    @pytest.mark.skip(reason="hg_commit requires positional argument: 'reference'")
     def test_t3_updating_a_revision_with_an_ammended_commit_is_successful(self):
         """
         # T3 - Updating a revision with an amended commit is successful
@@ -120,12 +138,15 @@ class TestPlan():
         """
 
         """ Step 1. """
-        hg_output = run_cmd(["hg", "update"])
-        print(hg_output)
+        # TypeError: hg_update() missing 1 required positional argument: 'reference'
+        # repo.hg_update()
 
         """ Step 2. """
-        hg_output2 = run_cmd(["hg", "commit", "--amend"])
-        print(hg_output2)
+        try:
+            repo.hg_commit("commit msg", amend=True)
+        except hgapi.HgException as err:
+            print(err)
+            pass
 
         """ Step 3. """
         mozphab_output = run_cmd(["moz-phab"])
@@ -133,6 +154,10 @@ class TestPlan():
 
         return
 
+    """
+    QUESTIONS:
+    - not sure how to set security-sensitive boxes via Python API. Or if this is better/possible in Bash script.
+    """
     def test_t4_creating_a_secure_revision_is_successful(self):
         """
         # T4 - Creating a secure revision is successful
@@ -171,11 +196,11 @@ class TestPlan():
         bug_id = BUGZILLA_CLIENT.bug_create(bug_data)
 
         """ Step 3. """
-        hg_output = run_cmd(
-            ["hg", "commit", "-A", "-m",
-             f"'Bug {bug_id}: Private changes'"]
-        )
-        print(hg_output)
+        try:
+            repo.hg_commit(f"'Bug {bug_id}: Private changes'", amend=True)
+        except hgapi.HgException as err:
+            print(err)
+            pass
 
         """ Step 4. """
         mozphab_output = run_cmd(["moz-phab"])
@@ -183,6 +208,10 @@ class TestPlan():
 
         return
 
+    """
+    QUESTIONS:
+    - same as above. needs access to email w/ API to verify the user got the expected emails
+    """
     def test_t5_adding_a_secure_bug_to_an_existing_revision_locks_it_down(self):
         """
         # T5 - Adding a secure bug to an existing revision locks it down
@@ -224,11 +253,11 @@ class TestPlan():
         bug_id = BUGZILLA_CLIENT.bug_create(bug_data)
 
         """ Step 2. """
-        hg_output = run_cmd(
-            ["hg", "commit", "-A", "-m",
-             f"'Bug {bug_id}: Public changes'"]
-        )
-        print(hg_output)
+        try:
+            repo.hg_commit(f"'Bug {bug_id}: Public changes'", amend=True)
+        except hgapi.HgException as err:
+            print(err)
+            pass
 
         """ Step 3. """
         mozphab_output = run_cmd(["moz-phab"])
@@ -251,11 +280,7 @@ class TestPlan():
 
         """ Step 2. """
         invalid_bug_id = "abcd efg"
-        hg_output = run_cmd(
-            ["hg", "commit", "-A", "-m",
-             f"'Bug {invalid_bug_id}: Public changes'"]
-        )
-        print(hg_output)
+        repo.hg_commit(f"'Bug {invalid_bug_id}: Public changes'", amend=True)
 
         """ Step 3. """
         mozphab_output = run_cmd(["moz-phab"])
@@ -279,16 +304,15 @@ class TestPlan():
         """ Step 2. """
         try:
             bug_id = 9999
-            hg_output = run_cmd(
-                ["hg", "commit", "-A", "-m",
-                 f"'Bug {bug_id}: Public changes'"]
-            )
-        except AssertionError as err:
+            repo.hg_commit(f"'Bug {bug_id}: Public changes'", amend=True)
+        except hgapi.HgException as err:
+            print(err)
             pass
-            # print(hg_output.stderr)
+        except AssertionError as err:
+            print(err)
+            pass
         else:
             print("Unexpected passing test")
-            print(hg_output)
 
         """ Step 3. """
         mozphab_output = run_cmd(["moz-phab"])
@@ -310,13 +334,12 @@ class TestPlan():
         """
 
         """ Step 2. """
-        secure_bug_id = 1395350
-
-        hg_output = run_cmd(
-            ["hg", "commit", "-A", "-m",
-             f"'Bug {secure_bug_id}: Public changes'"]
-        )
-        print(hg_output)
+        try:
+            secure_bug_id = 1395350
+            repo.hg_commit(f"'Bug {secure_bug_id}: Public changes'", amend=True)
+        except hgapi.HgException as err:
+            print(err)
+            pass
 
         """ Step 3. """
         mozphab_output = run_cmd(["moz-phab"])
@@ -338,12 +361,12 @@ class TestPlan():
         """
 
         """ Step 2. """
-        bug_id = 9999
-        hg_output = run_cmd(
-            ["hg", "commit", "-A", "-m",
-             f"Bug {bug_id}: Public changes"]
-        )
-        print(hg_output)
+        try:
+            bug_id = 9999
+            repo.hg_commit(f"'Bug {bug_id}: Public changes'", amend=True)
+        except hgapi.HgException as err:
+            print(err)
+            pass
 
         """ Step 3. """
         mozphab_output = run_cmd(["moz-phab"])
@@ -368,21 +391,22 @@ class TestPlan():
         bug_id = 9999
 
         """ Step 1. """
-        hg_output = run_cmd(
-            ["hg", "commit", "-A", "-m",
-             f"'Bug {bug_id}: Public changes'"]
-        )
-        print(hg_output)
+        try:
+            repo.hg_commit(f"'Bug {bug_id}: Public changes'", amend=True)
+        except hgapi.HgException as err:
+            print(err)
+            pass
 
         """ Step 2. """
         mozphab_output = run_cmd(["moz-phab"])
         print(mozphab_output)
 
         """ Step 3. """
-        hg_output2 = run_cmd(
-            ["hg", "commit", "-A", "-m",
-             f"'Bug {bug_id}: More public changes'"])
-        print(hg_output2)
+        try:
+            repo.hg_commit(f"'Bug {bug_id}: More public changes'", amend=True)
+        except hgapi.HgException as err:
+            print(err)
+            pass
 
         mozphab_output2 = run_cmd(["moz-phab"])
         print(mozphab_output2)
@@ -412,11 +436,12 @@ class TestPlan():
         """ Step 1. """
         bug_id = 0000
         reviewer = "johndoe"
-        hg_output = run_cmd(
-            ["hg", "commit", "-A", "-m",
-             f"'Bug {bug_id}: New changes r?{reviewer}'"]
-        )
-        print(hg_output)
+ 
+        try:
+            repo.hg_commit(f"'Bug {bug_id}: New changes r?{reviewer}'", amend=True)
+        except hgapi.HgException as err:
+            print(err)
+            pass
 
         """ Step 2. """
         mozphab_output = run_cmd(["moz-phab"])
@@ -424,6 +449,7 @@ class TestPlan():
 
         return
 
+    @pytest.mark.skip(reason="Potential Selenium test")
     def test_t9_abandoning_a_revision_obsoletes_the_attachment(self):
         """
         # T9 - Abandoning a revision obsoletes the attachment
@@ -438,6 +464,7 @@ class TestPlan():
 
         return
 
+    @pytest.mark.skip(reason="Potential Selenium test")
     def test_t10_reclaiming_a_revision_unobsoletes_the_attachment(self):
         """
         # T10 - Reclaiming a revision unobsoletes the attachment
@@ -478,7 +505,7 @@ class TestPlan():
         # T12 - Patching Diff created from git repository
 
         ## Test Plan
-        1. Using a commit created above run `cinnabarc diff HEAD~`.
+        1. Using a commit created above run `cinnabarrc diff HEAD~`.
         2. Fill the needed data (Test Plan) and confirm.
         3. Change directory to *phabricator-qa-dev*.
         4. Run `moz-phab patch D{number of the revision created above}`.
@@ -500,7 +527,16 @@ class TestPlan():
 
         return
 
+    @pytest.mark.skip(reason="Potential Selenium test")
     def test_t13_verify_the_private_revisions_deliver_emails_that_does_not_contain_any_sensitive_content(self):
+        ## NOT SURE HOW TO DO THE INITIAL STEPS. THIS ALMOST SEEMS BETTER AS A E2E test using Puppeteer or Selenium
+        ## IF WE MEED TO DO A LOT OF UI INTERACTIONS (UNLESS THERE ARE "Self Action > Enable Self Action Mail" CONFIGS
+        ## VIA THE API.
+        ## The other consideration will be verifying the received email, which may require some special @restmail.net
+        ## account which will let us query the inbox and validate the title/summary/text/etc. But not sure if that will
+        ## be a security concern since there is no access control around who can access @restmail.net emails (which could
+        ## mean that people could change the passwords and log in as our test user).
+
         """
         # T13 - Verify the private revisions deliver emails that does not contain any sensitive content
 
@@ -527,26 +563,18 @@ class TestPlan():
         7. Clicking on the link in the email should take you to the Phabricator page that displays the full unfiltered email contents.
         8. The email contents should contain the title, summary, test plan, reviewers, etc. of the new revision.
         9. Submitting a public revision should instead show the full contents in the email similar to what was displayed on the Phabricator mail page.
+
+        ## Step 7.
+        # bug_id = 9999
+        # hg_output = run_cmd(
+        #     ["hg", "commit", "-A", "-m",
+        #      f"'Bug {bug_id}: New changes'"]
+        # )
+        # print(hg_output)
+
+        ## Step 8.
+        # mozphab_output = run_cmd(["moz-phab"])
+        # print(mozphab_output)
         """
-
-        ## NOT SURE HOW TO DO THE INITIAL STEPS. THIS ALMOST SEEMS BETTER AS A E2E test using Puppeteer or Selenium
-        ## IF WE MEED TO DO A LOT OF UI INTERACTIONS (UNLESS THERE ARE "Self Action > Enable Self Action Mail" CONFIGS
-        ## VIA THE API.
-        ## The other consideration will be verifying the received email, which may require some special @restmail.net
-        ## account which will let us query the inbox and validate the title/summary/text/etc. But not sure if that will
-        ## be a security concern since there is no access control around who can access @restmail.net emails (which could
-        ## mean that people could change the passwords and log in as our test user).
-
-        """ Step 7. """
-        bug_id = 9999
-        hg_output = run_cmd(
-            ["hg", "commit", "-A", "-m",
-             f"'Bug {bug_id}: New changes'"]
-        )
-        print(hg_output)
-
-        """ Step 8. """
-        mozphab_output = run_cmd(["moz-phab"])
-        print(mozphab_output)
 
         return
