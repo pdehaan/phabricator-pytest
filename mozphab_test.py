@@ -9,6 +9,18 @@ mozphab = imp.load_source(
 print(mozphab)
 
 
+## PYTHON 3.5+?
+
+# import importlib
+
+# try:
+#     importlib.import_module('moz-phab')
+#     print("success")
+# except ImportError as err:
+#     print('Error:', err)
+
+
+
 """
 import importlib
 import sys
