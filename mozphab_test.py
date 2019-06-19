@@ -1,12 +1,14 @@
 import imp
 import os
 
+print(os.path.join(os.path.dirname(__file__), "moz-phab"))
+
 mozphab = imp.load_source(
-    # "mozphab", os.path.join(os.path.dirname(__file__), os.path.pardir, "moz-phab")
-    "mozphab", "/Users/pdehaan/dev/github/mozilla/phabricator/git-cinnabar/moz-phab"
+    "mozphab", os.path.join(os.path.dirname(__file__), "moz-phab")
+    # "mozphab", "moz-phab"
 )
 
-print(mozphab)
+print(mozphab.main)
 
 
 ## PYTHON 3.5+?

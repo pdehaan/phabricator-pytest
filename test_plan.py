@@ -1,12 +1,10 @@
 """
 https://wiki.mozilla.org/Phabricator/TestPlan
 """
-
-import os
+import imp
 # import subprocess
 
 import dotenv
-# import requests
 import hgapi
 import pytest
 from pytest_bugzilla_notifier.bugzilla_rest_client import BugzillaRESTClient
@@ -22,11 +20,16 @@ BUGZILLA_CLIENT = BugzillaRESTClient({
 
 repo = hgapi.Repo("peter")
 
-def run_cmd(cmd_arr):
-    """ Run a command using subprocess. """
-    output = ' '.join(cmd_arr)
-    return dict(stdout=output)
-    # return subprocess.run(cmd_arr, capture_output=True, text=True, check=True)
+mozphab = imp.load_source(
+    "mozphab", os.path.join(os.path.dirname(__file__), "moz-phab")
+)
+
+
+# def run_cmd(cmd_arr):
+#     """ Run a command using subprocess. """
+#     output = ' '.join(cmd_arr)
+#     return dict(stdout=output)
+#     # return subprocess.run(cmd_arr, capture_output=True, text=True, check=True)
 
 
 class TestPlan():
@@ -114,7 +117,10 @@ class TestPlan():
             pass
 
         """ Step 4. """
+        # mozphab.main(["submit"])
         mozphab_output = run_cmd(["moz-phab"])
+
+        
         print(mozphab_output)
 
         return
