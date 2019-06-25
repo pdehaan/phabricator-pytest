@@ -4,7 +4,8 @@ import os
 print(os.path.join(os.path.dirname(__file__), "moz-phab"))
 
 mozphab = imp.load_source(
-    "mozphab", os.path.join(os.path.dirname(__file__), "moz-phab")
+    "mozphab",
+    os.path.join(os.path.dirname(__file__), "moz-phab")
     # "mozphab", "moz-phab"
 )
 
@@ -20,7 +21,6 @@ print(mozphab.main)
 #     print("success")
 # except ImportError as err:
 #     print('Error:', err)
-
 
 
 """
