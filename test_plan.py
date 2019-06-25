@@ -33,8 +33,8 @@ BUGZILLA_CLIENT = BugzillaRESTClient(
 def run_cmd(cmd_arr):
     """ Run a command using subprocess. """
     output = " ".join(cmd_arr)
-    # return dict(stdout=output)
     return subprocess.run(cmd_arr, capture_output=True, text=True, check=True)
+    # return dict(stdout=output)
 
 
 def touch_file(filename=".tmp.txt", contents=datetime.now()):
@@ -42,6 +42,28 @@ def touch_file(filename=".tmp.txt", contents=datetime.now()):
     f = open(".tmp.txt", "w+")
     f.write(str(contents))
     f.close()
+
+
+def _conduit_request(api_url, data):
+    api_url = f"{os.getenv('CONDUIT_API_URL')}/{api_url}"
+    data['api.token'] = os.getenv('CONDUIT_API_KEY_1')
+
+    s = requests.Session()
+    req = requests.Request('POST', api_url, data=data)
+    prepped = s.prepare_request(req)
+    resp = s.send(prepped)
+    resp.raise_for_status()
+    results = resp.json()
+    return results['result']['data']
+
+
+def get_conduit_revision(constraints):
+    payload = {'constraints[ids][]': constraints}
+    return _conduit_request('differential.revision.search', payload)
+
+
+def is_public_revision(revision):
+    return revision["fields"]["policy"]["view"] == "public"
 
 
 class TestPlan:
