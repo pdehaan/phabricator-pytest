@@ -159,6 +159,9 @@ class TestPlan:
         mozphab_output = run_cmd(["moz-phab", "-y"])
         print(mozphab_output)
 
+        rev = get_conduit_revision(bug_id)
+        print(rev)
+
         return
 
     @pytest.mark.skip(reason="hg_commit requires positional argument: 'reference'")
@@ -257,6 +260,9 @@ class TestPlan:
         mozphab_output = run_cmd(["moz-phab", "-y"])
         print(mozphab_output)
 
+        rev = get_conduit_revision(bug_id)
+        print(rev)
+
         # RUN CONDUIT `differential.revision.search`
 
         # check conduit policy access is not "public"
@@ -320,6 +326,9 @@ class TestPlan:
         """ Step 3. """
         mozphab_output = run_cmd(["moz-phab", "-y"])
         print(mozphab_output)
+
+        rev = get_conduit_revision(bug_id)
+        print(rev)
 
         return
 
@@ -408,6 +417,9 @@ class TestPlan:
         mozphab_output = run_cmd(["moz-phab", "-y"])
         print(mozphab_output)
 
+        rev = get_conduit_revision(secure_bug_id)
+        print(rev)
+
         return
 
     def test_t6d_creating_a_revision_checks_the_bug_id(self):
@@ -424,7 +436,14 @@ class TestPlan:
         """
 
         """ Step 2. """
-        bug_id = 9999
+        bug_data = {
+            "product": "Firefox",
+            "component": "Developer Tools",
+            "summary": "Test Public Bug",
+            "version": "unspecified",
+        }
+        bug_id = BUGZILLA_CLIENT.bug_create(bug_data)
+
         touch_file()
         run_cmd(["hg", "add", ".tmp.txt"])
 
@@ -479,6 +498,7 @@ class TestPlan:
 
         return
 
+    @pytest.mark.skip(reason="TODO")
     def test_t8_requesting_and_leaving_a_review_on_a_revision_is_successful(self):
         """
         # T8 - Requesting and leaving a review on a revision is successful
