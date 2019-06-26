@@ -152,7 +152,7 @@ class TestPlan:
         touch_file()
         run_cmd(["hg", "add", ".tmp.txt"])
 
-        hg_output = run_cmd(["hg", "commit", "-A", "-m", f"'Bug {bug_id}: New changes"])
+        hg_output = run_cmd(["hg", "commit", "-A", "-m", f"'Bug {bug_id}: New changes'"])
         print(hg_output)
 
         """ Step 4. """
